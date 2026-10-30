@@ -12,6 +12,7 @@
   5. 開機 Cover Page 顯示 3 秒
   6. 觸控設定頁：TUNNEL / NEWS / CCTV 延遲可調 1 至 9 秒
   7. 設定儲存在 ESP32 NVS，重新開機後保留
+  8. CYD XPT2046 觸控控制器
 
   顯示會自動輪流切換：
   - TOLL：四條隧道收費 + 行車時間
@@ -32,9 +33,20 @@
 #include <WiFiManager.h>
 #include <TJpg_Decoder.h>
 #include <Preferences.h>
+#include <SPI.h>
+#include <XPT2046_Touchscreen.h>
 #include "cover_image.h"
 
 TFT_eSPI tft = TFT_eSPI();
+
+// ESP32-2432S028 / CYD 2.8 inch touch controller pins.
+#define TOUCH_IRQ 36
+#define TOUCH_MOSI 32
+#define TOUCH_MISO 39
+#define TOUCH_CLK 25
+#define TOUCH_CS 33
+SPIClass touchSPI(VSPI);
+XPT2046_Touchscreen touchscreen(TOUCH_CS, TOUCH_IRQ);
 
 // 每次發布新韌體時，把 manifest.txt 的版本號和 .bin 網址更新。
 const char* FIRMWARE_VERSION = "1.3.0";
@@ -122,7 +134,6 @@ uint8_t tunnelDelaySec = 3;
 uint8_t newsDelaySec = 5;
 uint8_t cctvDelaySec = 3;
 bool settingsOpen = false;
-uint16_t touchCalData[5] = {275, 3620, 264, 3532, 1};
 const unsigned long JTIS_MS = 120000;
 const unsigned long NEWS_MS = 60000;
 // 官方分時段收費會按當前香港時間計算；每 2 分鐘重新確認一次。
@@ -311,15 +322,25 @@ void showSettingsPage() {
   drawVersionFooter();
 }
 
+bool getTouchPoint(uint16_t& x, uint16_t& y) {
+  if (!touchscreen.touched()) return false;
+  TS_Point p = touchscreen.getPoint();
+  int mappedX = map(p.x, 275, 3620, 0, 319);
+  int mappedY = map(p.y, 264, 3532, 0, 239);
+  x = constrain(mappedX, 0, 319);
+  y = constrain(mappedY, 0, 239);
+  return true;
+}
+
 void waitTouchRelease() {
   uint16_t x, y;
-  while (tft.getTouch(x, y)) delay(20);
+  while (getTouchPoint(x, y)) delay(20);
   delay(150);
 }
 
 void handleSettingsTouch() {
   uint16_t x, y;
-  if (!tft.getTouch(x, y)) return;
+  if (!getTouchPoint(x, y)) return;
   if (y >= 190) {
     saveSettings();
     settingsOpen = false;
@@ -678,7 +699,9 @@ void setup() {
   Serial.begin(115200);
   tft.init();
   tft.setRotation(1);
-  tft.setTouch(touchCalData);
+  touchSPI.begin(TOUCH_CLK, TOUCH_MISO, TOUCH_MOSI, TOUCH_CS);
+  touchscreen.begin(touchSPI);
+  touchscreen.setRotation(1);
   loadSettings();
   tft.fillScreen(TFT_BLACK);
   TJpgDec.setCallback(jpgCallback);
@@ -739,7 +762,7 @@ void loop() {
     return;
   }
   uint16_t touchX, touchY;
-  if (tft.getTouch(touchX, touchY)) {
+  if (getTouchPoint(touchX, touchY)) {
     settingsOpen = true;
     showSettingsPage();
     waitTouchRelease();
