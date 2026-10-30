@@ -1,2 +1,2 @@
-1.1.0
+1.2.0
 https://raw.githubusercontent.com/Simon-Kan/HK_CYD_Traffic_OTA/main/HK_CYD_Traffic_v1.2.bin
