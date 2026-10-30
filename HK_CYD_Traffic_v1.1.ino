@@ -270,6 +270,7 @@ void header(const char* title) {
   tft.drawRightString(clockText, 312, 5, 2);
   tft.setTextDatum(TL_DATUM);
   tft.drawFastHLine(5, 25, 310, TFT_DARKGREY);
+  drawVersionFooter();
 }
 
 void showToll() {
@@ -385,6 +386,7 @@ void showNews() {
   tft.setTextSize(1);
   if (text.length() == 0) {
     tft.drawString("No message", 4, 35);
+    drawVersionFooter();
     return;
   }
 
@@ -413,6 +415,7 @@ void showNews() {
     word = "";
   }
   if (line.length() && y <= 220) tft.drawString(line.c_str(), 4, y);
+  drawVersionFooter();
 }
 
 bool jpgCallback(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
@@ -431,6 +434,7 @@ void showCctv() {
   tft.drawString("Loading CCTV", 10, 70, 4);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString(CCTV_NAMES[cctvIndex], 10, 115, 4);
+  drawVersionFooter();
   delay(1000);
 
   WiFiClientSecure client; client.setInsecure();
@@ -486,6 +490,14 @@ void showCctv() {
   http.end();
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString(CCTV_NAMES[cctvIndex], 8, 218, 1);
+  drawVersionFooter();
+}
+
+void drawVersionFooter() {
+  tft.setTextDatum(BR_DATUM);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("v" + String(FIRMWARE_VERSION), 315, 238, 1);
+  tft.setTextDatum(TL_DATUM);
 }
 
 void loadingScreen(const char* title, const String& detail) {
@@ -494,6 +506,7 @@ void loadingScreen(const char* title, const String& detail) {
   tft.drawString(title, 10, 60, 4);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString(detail, 10, 110, 2);
+  drawVersionFooter();
 }
 
 bool newerVersion(const String& remote, const char* current) {
@@ -537,6 +550,7 @@ void checkForRemoteUpdate() {
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_CYAN, TFT_BLACK);
     tft.drawString("Updating firmware", 10, 55, 4);
+    drawVersionFooter();
   });
   httpUpdate.onProgress([](int current, int total) {
     int percent = total > 0 ? (current * 100 / total) : 0;
@@ -544,17 +558,20 @@ void checkForRemoteUpdate() {
     tft.fillRect(10, 110, percent * 3, 20, TFT_GREEN);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.drawString(String(percent) + "%", 125, 150, 4);
+    drawVersionFooter();
   });
   httpUpdate.onEnd([]() {
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
     tft.drawString("Update complete", 10, 90, 4);
+    drawVersionFooter();
   });
   httpUpdate.onError([](int error) {
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_RED, TFT_BLACK);
     tft.drawString("Update failed", 10, 80, 4);
     tft.drawString(String(error), 10, 125, 2);
+    drawVersionFooter();
     delay(1500);
   });
 
@@ -573,6 +590,7 @@ void setup() {
   tft.drawString("Hong Kong Live", 5, 45, 2);
   tft.drawString("Traffic Monitor", 5, 75, 2);
   tft.drawString("AP: HK-Toll-Setup", 10, 110, 2);
+  drawVersionFooter();
 
   // 與已驗證可連線的參考程式相同，明確使用 STA 模式。
   // 關閉省電可避免部分 CYD/路由器在配網後經常斷線。
